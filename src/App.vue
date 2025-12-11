@@ -26,8 +26,26 @@
                     ]" />
 
                     <buttonPrincipal label="Entrar" color="black" textColor="white" @accionBoton="login" />
+                    <q-btn label="Iniciar con Face ID" color="secondary" class="q-mt-md full-width"
+                        @click="iniciarFaceIDLogin" />
+
                 </form>
             </div>
+            <!--sesion con face id-->
+            <q-dialog v-model="mostrarDialogoFaceLogin" persistent>
+                <q-card style="width: 360px; padding: 20px;">
+                    <h4 class="text-center">Validar Rostro</h4>
+
+                    <video ref="videoLoginRef" autoplay playsinline width="300" height="220"
+                        style="border-radius: 10px; border: 2px solid #000; margin: 10px auto;"></video>
+
+                    <q-btn label="Validar Rostro" color="green" class="full-width q-mt-md"
+                        @click="validarRostroLogin" />
+
+                    <q-btn label="Cancelar" flat class="full-width q-mt-sm" @click="cerrarModalFaceLogin" />
+                </q-card>
+            </q-dialog>
+
 
             <!-- Sección de registro -->
             <div v-if="seccion === 'registro'" class="formulario">
@@ -49,10 +67,26 @@
                     ]" />
 
                     <buttonPrincipal label="Crear Cuenta" color="black" textColor="white" @accionBoton="registrar" />
+
+                    <q-btn label="Registrar Face ID" color="primary" class="q-mt-md" @click="abrirFaceID" />
+
                 </form>
             </div>
-
         </div>
+        <!--registro con face id-->
+        <q-dialog v-model="mostrarDialogoFaceId" persistent>
+            <q-card style="width: 350px; padding: 20px;">
+                <h4 class="text-center">Registrar Rostro</h4>
+
+                <video ref="videoRef" autoplay playsinline width="300" height="220"
+                    style="border-radius: 10px; border: 2px solid #000;"></video>
+
+                <q-btn label="Guardar Rostro" color="green" class="full-width q-mt-md" @click="capturarRostro" />
+
+                <q-btn label="Cancelar" flat class="full-width q-mt-sm" @click="mostrarDialogoFaceId = false" />
+            </q-card>
+        </q-dialog>
+
     </div>
 </template>
 
@@ -60,7 +94,16 @@
 <script setup>
 import { ref } from "vue";
 import buttonPrincipal from "./components/buttonPrincipal.vue"
+import * as faceapi from "face-api.js";
+import { onMounted } from "vue";
 import { Notify } from "quasar";
+/* registro con  face id*/
+const mostrarDialogoFaceId = ref(false);
+const videoRef = ref(null);
+/* inicar sesión face id*/
+const mostrarDialogoFaceLogin = ref(false);
+const videoLoginRef = ref(null);
+let streamLogin = null;
 
 const seccion = ref("login")
 const nombre = ref("")
@@ -107,8 +150,11 @@ function registrar() {
         nombre: nombre.value,
         apellido: apellido.value,
         email: email.value,
-        password: password.value
+        password: password.value,
+        faceId: JSON.parse(localStorage.getItem("faceTemp")) || null
     };
+    localStorage.removeItem("faceTemp");
+
 
     usuarios.push(nuevoUsuario);
     guardarUsuarios(usuarios);
@@ -171,6 +217,116 @@ function mostrarLogin() {
 function mostrarRegistro() {
     seccion.value = "registro"
 }
+/* registro face id*/
+async function abrirFaceID() {
+    mostrarDialogoFaceId.value = true;
+
+    await cargarModelos();
+    iniciarCamara();
+}
+
+async function cargarModelos() {
+    await Promise.all([
+        faceapi.nets.ssdMobilenetv1.loadFromUri("/models"),
+        faceapi.nets.faceLandmark68Net.loadFromUri("/models"),
+        faceapi.nets.faceRecognitionNet.loadFromUri("/models"),
+    ]);
+}
+
+async function iniciarCamara() {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    videoRef.value.srcObject = stream;
+}
+
+async function capturarRostro() {
+    const deteccion = await faceapi
+        .detectSingleFace(videoRef.value)
+        .withFaceLandmarks()
+        .withFaceDescriptor();
+
+    if (!deteccion) {
+        Notify.create({
+            message: "No se detectó un rostro",
+            color: "red",
+            icon: "error",
+        });
+        return;
+    }
+
+    const descriptorArray = Array.from(deteccion.descriptor);
+
+    // Guardamos rostro al usuario en creación
+    localStorage.setItem(
+        "faceTemp",
+        JSON.stringify(descriptorArray)
+    );
+
+    Notify.create({
+        message: "Rostro registrado correctamente",
+        color: "green",
+        icon: "check"
+    });
+
+    mostrarDialogoFaceId.value = false;
+}
+/* inicar sesión face id*/
+async function iniciarFaceIDLogin() {
+  mostrarDialogoFaceLogin.value = true;
+  await cargarModelos();
+  iniciarCamaraLogin();
+}
+
+async function iniciarCamaraLogin() {
+  streamLogin = await navigator.mediaDevices.getUserMedia({ video: true });
+  videoLoginRef.value.srcObject = streamLogin;
+}
+
+function cerrarModalFaceLogin() {
+  mostrarDialogoFaceLogin.value = false;
+  if (streamLogin) {
+    streamLogin.getTracks().forEach(track => track.stop());
+  }
+}
+
+async function validarRostroLogin() {
+  const usuarios = obtenerUsuarios();
+  const deteccion = await faceapi
+    .detectSingleFace(videoLoginRef.value)
+    .withFaceLandmarks()
+    .withFaceDescriptor();
+
+  if (!deteccion) {
+    Notify.create({ message: "No se detectó rostro", color: "red" });
+    return;
+  }
+
+  const descriptorActual = deteccion.descriptor;
+
+  for (const usuario of usuarios) {
+    if (!usuario.faceId) continue;
+
+    const distancia = faceapi.euclideanDistance(
+      new Float32Array(usuario.faceId),
+      descriptorActual
+    );
+
+    if (distancia < 0.45) {
+      Notify.create({
+        message: `Bienvenido, ${usuario.nombre}`,
+        color: "green",
+        icon: "check",
+      });
+
+      localStorage.setItem("usuarioActual", JSON.stringify(usuario));
+
+      cerrarModalFaceLogin();
+      return;
+    }
+  }
+
+  Notify.create({ message: "Rostro no coincide", color: "red" });
+}
+
 </script>
 
 
