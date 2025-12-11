@@ -1,18 +1,24 @@
 import { createApp } from 'vue'
 import { router } from './router/routes'
-import { Quasar } from 'quasar'
-// Import icon libraries
+import { Quasar, Notify } from 'quasar'
+
+// Iconos
 import '@quasar/extras/material-icons/material-icons.css'
-// Import Quasar css
+
+// Estilos de Quasar
 import 'quasar/src/css/index.sass'
 import './style.css'
 
 import App from './App.vue'
 
 const app = createApp(App)
+
 app.use(router)
+
 app.use(Quasar, {
-  plugins: {}, // import Quasar plugins and add here
+  plugins: {
+    Notify   
+  }
 })
 
-.mount('#app')
+app.mount('#app')

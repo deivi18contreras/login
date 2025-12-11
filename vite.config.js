@@ -3,7 +3,6 @@ import { fileURLToPath } from 'node:url'
 import vue from '@vitejs/plugin-vue'
 import { quasar, transformAssetUrls } from '@quasar/vite-plugin'
 
-// https://vite.dev/config/
 export default defineConfig({
 
   base: './',
@@ -14,6 +13,9 @@ export default defineConfig({
     }),
 
     quasar({
+      plugins: {
+        Notify: true   
+      },
       sassVariables: fileURLToPath(
         new URL('./src/quasar-variables.sass', import.meta.url)
       )
