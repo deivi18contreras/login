@@ -24,7 +24,7 @@
             <div v-for="(item, index) in asistencias" :key="index" class="q-mt-md">
                 <q-card class="q-pa-md">
                     <h5>Asistencia #{{ index + 1 }}</h5>
-                    <p>📅 Fecha: {{ item.fecha }}</p>
+                    <p>📅Fecha: {{ item.fecha }}</p>
                     <p>⏰ Hora: {{ item.hora }}</p>
                 </q-card>
             </div>
