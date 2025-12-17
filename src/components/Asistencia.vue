@@ -3,15 +3,11 @@
         <q-page padding class="flex flex-center column">
 
             <h2 class="text-center q-mb-lg">Registro de Asistencia</h2>
-
-            <!-- Botón para marcar asistencia -->
             <q-btn label="Marcar Asistencia" color="primary" class="q-mb-lg" @click="iniciarFaceID" />
 
-            <!-- VIDEO (OCULTO HASTA QUE SE USE FACE ID) -->
             <video ref="videoRef" autoplay playsinline width="300" height="220"
                 style="display:none; border-radius: 12px; border: 2px solid #000;"></video>
 
-            <!-- MENSAJES -->
             <div v-if="error" class="text-negative q-mt-md">
                 {{ error }}
             </div>
@@ -19,7 +15,6 @@
                 {{ mensaje }}
             </div>
 
-            <!-- HISTORIAL -->
             <h3 class="q-mt-xl text-center">Historial de Asistencias</h3>
 
             <div v-if="asistencias.length === 0" class="text-grey q-mt-md">
